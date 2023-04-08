@@ -1,0 +1,44 @@
+version: 2.1
+jobs:
+  build:
+    docker:
+      - image: circleci/node:latest
+    steps:
+      - checkout
+      - run: npm install
+      - run: npm run build
+      - persist_to_workspace:
+          root: .
+          paths:
+            - build/
+  deploy:
+    docker:
+      - image: circleci/python:latest
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y python3-pip
+            pip3 install fabric3
+      - run:
+          name: Deploy code to EC2 instance
+          command: |
+            fab deploy -i ~/.ssh/circleci.pem -H ubuntu@http://44.203.171.61 -p 22
+workflows:
+  version: 2
+  build-and-deploy:
+    jobs:
+      - build:
+          filters:
+            branches:
+              only: master
+      - deploy:
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
+
